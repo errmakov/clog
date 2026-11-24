@@ -1,5 +1,6 @@
 //! JSONL transcript → [`Transcript`].
 
+mod classify;
 mod raw;
 
 use std::collections::HashMap;
@@ -13,6 +14,7 @@ use chrono::{DateTime, Utc};
 use crate::model::{
     Block, Compaction, Item, Message, Meta, Role, ToolCall, ToolResult, Transcript,
 };
+use classify::{UserText, classify};
 use raw::{RawBlock, RawContent, Record};
 
 const TITLE_FALLBACK_CHARS: usize = 100;
@@ -148,7 +150,8 @@ impl State {
         if blocks.is_empty() {
             return;
         }
-        self.push_message(Role::User, time, blocks);
+        let (role, blocks) = reclassify(blocks);
+        self.push_message(role, time, blocks);
     }
 
     /// Converts user content blocks; tool results are attached to their calls
@@ -293,6 +296,21 @@ impl State {
     }
 }
 
+/// Applies [`classify`] to a user record whose first block is text.
+fn reclassify(mut blocks: Vec<Block>) -> (Role, Vec<Block>) {
+    let Some(Block::Text(first)) = blocks.first() else {
+        return (Role::User, blocks);
+    };
+    match classify(first) {
+        None => (Role::User, blocks),
+        Some(UserText::Prompt(p)) => {
+            blocks[0] = Block::Text(p);
+            (Role::User, blocks)
+        }
+        Some(UserText::Event(e)) => (Role::Event, vec![Block::Text(e)]),
+    }
+}
+
 fn assistant_block(b: RawBlock) -> Option<Block> {
     match b {
         RawBlock::Text { text: Some(t) } if !t.trim().is_empty() => Some(Block::Text(t)),
@@ -313,7 +331,8 @@ fn assistant_block(b: RawBlock) -> Option<Block> {
 /// useful as a title or first-prompt preview.
 fn is_real_prompt(t: &str) -> bool {
     let t = t.trim_start();
-    !t.is_empty() && !t.starts_with('<') && !t.starts_with("[Request interrupted")
+    let bare_command = t.starts_with('/') && !t.trim_end().contains(' ');
+    !t.is_empty() && !bare_command && !t.starts_with('<') && !t.starts_with("[Request interrupted")
 }
 
 pub fn parse_time(s: &str) -> Option<DateTime<Utc>> {

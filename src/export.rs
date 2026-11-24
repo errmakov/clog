@@ -43,14 +43,19 @@ pub fn to_markdown(t: &Transcript, opts: ExportOptions) -> String {
 }
 
 fn write_message(out: &mut String, msg: &Message, opts: ExportOptions) {
-    let who = match msg.role {
-        Role::User => "You",
-        Role::Assistant => "Claude",
-    };
     let when = msg
         .time
         .map(|t| format!(" · {}", fmt_time(t)))
         .unwrap_or_default();
+    let who = match msg.role {
+        Role::User => "You",
+        Role::Assistant => "Claude",
+        Role::Event => {
+            let text = msg.dialog_text().replace('\n', " ");
+            let _ = writeln!(out, "*⚙ #{} {}{when}*\n", msg.no, text.trim());
+            return;
+        }
+    };
     let _ = writeln!(out, "---\n\n## #{} {who}{when}\n", msg.no);
     for b in &msg.blocks {
         match b {

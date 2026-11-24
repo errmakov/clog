@@ -7,7 +7,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthStr;
 
-use super::fmt::{hard_wrap, sanitize, soft_wrap, truncate};
+use super::fmt::{hard_wrap, sanitize, soft_wrap, stamp, truncate};
 use crate::export::kilo;
 use crate::model::{Block, Compaction, Item, Message, Role, ToolCall, Transcript};
 
@@ -51,6 +51,8 @@ pub struct RenderOpts<'a> {
     pub expanded: &'a HashSet<Fold>,
     pub all_tools: bool,
     pub show_thinking: bool,
+    /// Reference time for relative stamps ("today 17:01").
+    pub now: DateTime<Local>,
 }
 
 impl RenderOpts<'_> {
@@ -97,6 +99,10 @@ impl Out {
 fn message(out: &mut Out, item: usize, m: &Message, o: &RenderOpts<'_>) {
     out.msg = Some(m.no);
     out.fold = None;
+    if m.role == Role::Event {
+        event(out, m, o);
+        return;
+    }
     let user = m.role == Role::User;
     let (bar, body_width) = if user {
         (USER_BAR, o.width.saturating_sub(2))
@@ -118,7 +124,7 @@ fn message(out: &mut Out, item: usize, m: &Message, o: &RenderOpts<'_>) {
     let left = vec![
         Span::styled(bar, bar_style),
         who,
-        dim(format!(" · {}", hhmm(m.time))),
+        dim(format!(" · {}", stamp_of(m.time, o.now))),
     ];
     out.push(
         right_align(left, dim(format!("#{}", m.no)), o.width),
@@ -167,7 +173,9 @@ fn tool(out: &mut Out, fold: Fold, call: &ToolCall, o: &RenderOpts<'_>) {
     let line = Line::from(vec![
         Span::styled(
             head,
-            Style::new().fg(Color::Blue).add_modifier(Modifier::BOLD),
+            Style::new()
+                .fg(Color::LightBlue)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw(truncate(&sanitize(&call.summary()), room)),
         status,
@@ -229,7 +237,7 @@ fn compaction(out: &mut Out, item: usize, c: &Compaction, o: &RenderOpts<'_>) {
         (Some(a), Some(b)) => format!(" · {} → {} tokens", kilo(a), kilo(b)),
         _ => String::new(),
     };
-    let label = format!(" ⧉ COMPACTED {}{tokens} ", hhmm(c.time));
+    let label = format!(" ⧉ COMPACTED {}{tokens} ", stamp_of(c.time, o.now));
     let fill = o.width.saturating_sub(label.width());
     let banner = format!(
         "{}{label}{}",
@@ -339,9 +347,37 @@ fn dim(s: impl Into<std::borrow::Cow<'static, str>>) -> Span<'static> {
     Span::styled(s, Style::new().add_modifier(Modifier::DIM))
 }
 
-fn hhmm(t: Option<DateTime<Utc>>) -> String {
-    t.map(|t| t.with_timezone(&Local).format("%H:%M").to_string())
+fn stamp_of(t: Option<DateTime<Utc>>, now: DateTime<Local>) -> String {
+    t.map(|t| stamp(t.with_timezone(&Local), now))
         .unwrap_or_default()
+}
+
+/// Lines shown for a multi-line event body (e.g. command output).
+const EVENT_LINES: usize = 3;
+
+/// Harness event: one dim `⚙` line (plus a few body lines), not a prompt.
+fn event(out: &mut Out, m: &Message, o: &RenderOpts<'_>) {
+    let text = sanitize(&m.dialog_text());
+    let mut lines = text.lines().filter(|l| !l.trim().is_empty());
+    let head = lines.next().unwrap_or("event");
+    let right = dim(format!("{} · #{}", stamp_of(m.time, o.now), m.no));
+    let room = o.width.saturating_sub(right.content.width() + 3);
+    let style = Style::new().add_modifier(Modifier::DIM | Modifier::ITALIC);
+    let left = vec![Span::styled(format!("⚙ {}", truncate(head, room)), style)];
+    out.push(right_align(left, right, o.width), Kind::Plain);
+    let rest: Vec<&str> = lines.collect();
+    for l in rest.iter().take(EVENT_LINES) {
+        let body = truncate(l, o.width.saturating_sub(2));
+        out.push(Line::styled(format!("  {body}"), style), Kind::Plain);
+    }
+    if rest.len() > EVENT_LINES {
+        let more = rest.len() - EVENT_LINES;
+        out.push(
+            Line::styled(format!("  … {more} more lines"), style),
+            Kind::Plain,
+        );
+    }
+    out.blank();
 }
 
 #[cfg(test)]

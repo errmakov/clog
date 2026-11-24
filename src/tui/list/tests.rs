@@ -70,7 +70,7 @@ fn draws_table_and_preview() {
     let s = screen(&mut l);
     assert!(s.contains("clog ─ 3 sessions"));
     assert!(s.contains("Fix webhook retry"));
-    assert!(s.contains("⧉1"));
+    assert!(s.contains("AGENTS") && s.contains("COMPACT"));
     assert!(s.contains("> prompt for Fix webhook retry"));
 }
 

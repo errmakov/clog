@@ -38,9 +38,9 @@ fn formats_relative_dates() {
         )
     };
     assert_eq!(when(ms(2026, 11, 24, 9), now), "today 09:05");
-    assert_eq!(when(ms(2026, 11, 23, 9), now), "yesterday");
-    assert_eq!(when(ms(2026, 3, 2, 9), now), "Mar 02");
-    assert_eq!(when(ms(2025, 3, 2, 9), now), "2025-03-02");
+    assert_eq!(when(ms(2026, 11, 23, 9), now), "yesterday 09:05");
+    assert_eq!(when(ms(2026, 3, 2, 9), now), "Mar 02 09:05");
+    assert_eq!(when(ms(2025, 3, 2, 9), now), "2025-03-02 09:05");
     assert_eq!(when(None, now), "—");
 }
 

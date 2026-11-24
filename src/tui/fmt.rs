@@ -1,7 +1,7 @@
 //! Formatting helpers shared by the TUI screens.
 
 use base64::Engine as _;
-use chrono::{DateTime, Local, TimeZone};
+use chrono::{DateTime, Datelike, Local, TimeZone};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
@@ -58,19 +58,22 @@ pub fn truncate(s: &str, width: usize) -> String {
     out
 }
 
-/// "today 17:15", "yesterday", "Nov 21", "2025-03-02".
+/// Session time from unix milliseconds; see [`stamp`].
 pub fn when(ms: Option<i64>, now: DateTime<Local>) -> String {
-    let Some(t) = ms.and_then(|ms| Local.timestamp_millis_opt(ms).single()) else {
-        return "—".into();
-    };
-    let days = (now.date_naive() - t.date_naive()).num_days();
-    match days {
+    match ms.and_then(|ms| Local.timestamp_millis_opt(ms).single()) {
+        Some(t) => stamp(t, now),
+        None => "—".into(),
+    }
+}
+
+/// Date and time, relative where that is shorter:
+/// "today 17:15", "yesterday 09:02", "Nov 18 17:01", "2025-03-02 14:00".
+pub fn stamp(t: DateTime<Local>, now: DateTime<Local>) -> String {
+    match (now.date_naive() - t.date_naive()).num_days() {
         0 => t.format("today %H:%M").to_string(),
-        1 => "yesterday".into(),
-        _ if t.format("%Y").to_string() == now.format("%Y").to_string() => {
-            t.format("%b %d").to_string()
-        }
-        _ => t.format("%Y-%m-%d").to_string(),
+        1 => t.format("yesterday %H:%M").to_string(),
+        _ if t.year() == now.year() => t.format("%b %d %H:%M").to_string(),
+        _ => t.format("%Y-%m-%d %H:%M").to_string(),
     }
 }
 

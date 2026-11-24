@@ -85,7 +85,7 @@ fn draws_header_dialog_banner_and_footer() {
     let (_d, mut v, mut t) = setup();
     let s = screen(&mut v, &mut t);
     assert!(s.contains("www/demo · Fix webhook retry on timeout"));
-    assert!(s.contains("4 msgs · ⧉1 · 1 subagents"));
+    assert!(s.contains("4 msgs · 1 compaction · 1 subagent"));
     assert!(s.contains("┃ you"));
     assert!(s.contains("▸ Bash cargo test retry"));
     assert!(s.contains("⧉ COMPACTED"));

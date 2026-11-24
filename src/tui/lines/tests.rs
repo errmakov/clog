@@ -14,12 +14,52 @@ fn texts(lines: &[RLine]) -> Vec<String> {
 }
 
 fn opts(expanded: &HashSet<Fold>) -> RenderOpts<'_> {
+    use chrono::TimeZone;
     RenderOpts {
         width: 60,
         expanded,
         all_tools: false,
         show_thinking: false,
+        now: Local.with_ymd_and_hms(2026, 11, 24, 12, 0, 0).unwrap(),
     }
+}
+
+#[test]
+fn harness_records_render_as_events_not_prompts() {
+    let jsonl = r#"{"type":"user","message":{"content":"real question"}}
+{"type":"user","timestamp":"2026-11-18T14:01:00Z","message":{"content":"<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n<summary>Background command \"CI\" completed</summary>\n</task-notification>"}}
+{"type":"user","message":{"content":"<command-name>/compact</command-name>\n<command-args></command-args>"}}"#;
+    let t = parse_reader(jsonl.as_bytes(), ParseOptions::default()).unwrap();
+    let none = HashSet::new();
+    let lines = render(&t, &opts(&none));
+    let all = texts(&lines);
+    let event = lines
+        .iter()
+        .find(|l| l.text().starts_with("⚙ "))
+        .expect("event line");
+    assert!(
+        event.text().starts_with("⚙ task completed: Background"),
+        "{}",
+        event.text()
+    );
+    assert!(event.text().contains("Nov 18"), "{}", event.text());
+    assert_eq!(event.kind, Kind::Plain);
+    assert!(!all.iter().any(|l| l.contains("<task-id>")));
+    assert!(all.iter().any(|l| l == "┃ /compact"));
+    assert_eq!(
+        lines.iter().filter(|l| l.kind == Kind::Prompt).count(),
+        2,
+        "question + /compact"
+    );
+}
+
+#[test]
+fn headers_show_dates() {
+    let t = transcript();
+    let none = HashSet::new();
+    let all = texts(&render(&t, &opts(&none)));
+    let header = all.iter().find(|l| l.starts_with("┃ you")).unwrap();
+    assert!(header.contains("Nov 20 "), "{header}");
 }
 
 #[test]

@@ -6,6 +6,9 @@ use chrono::{DateTime, Utc};
 pub enum Role {
     User,
     Assistant,
+    /// Harness-injected record stored with the user role (task
+    /// notification, command output, interruption).
+    Event,
 }
 
 impl Role {
@@ -13,6 +16,7 @@ impl Role {
         match self {
             Role::User => "user",
             Role::Assistant => "assistant",
+            Role::Event => "event",
         }
     }
 }

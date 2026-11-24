@@ -16,7 +16,7 @@ use crate::parse::{ParseOptions, parse_file};
 use crate::paths::{SessionFile, project_label};
 use crate::search::fts_query;
 
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 const ROWID_SHIFT: u32 = 20;
 const MSG_MASK: i64 = (1 << ROWID_SHIFT) - 1;
 const PARSE_CHUNK: usize = 32;
@@ -416,7 +416,8 @@ fn write_session(
     delete_fts(conn, id)?;
     let mut insert =
         conn.prepare_cached("INSERT INTO fts (rowid, text, role) VALUES (?1, ?2, ?3)")?;
-    for msg in t.messages() {
+    // Harness events (task notifications etc.) are not dialog.
+    for msg in t.messages().filter(|m| m.role != crate::model::Role::Event) {
         let no = to_i64(msg.no as u64);
         let text = crate::sanitize::sanitize(&msg.dialog_text());
         if no > MSG_MASK || text.trim().is_empty() {

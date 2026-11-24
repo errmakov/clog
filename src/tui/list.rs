@@ -21,6 +21,9 @@ const FTS_DEBOUNCE: Duration = Duration::from_millis(150);
 const FTS_LIMIT: usize = 400;
 const HITS_PER_SESSION: usize = 5;
 const HIGHLIGHT_W: u16 = 2;
+/// Fits "yesterday 17:01" and "2025-03-02 14:00".
+const WHEN_W: u16 = 16;
+const PROJECT_W: u16 = 22;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -432,43 +435,37 @@ impl ListScreen {
 
     fn draw_sessions(&mut self, f: &mut Frame<'_>, area: Rect) {
         let now = Local::now();
-        // Fixed columns + highlight symbol + one-column gaps between six columns.
-        let fixed: u16 = 13 + 22 + 6 + 4 + 7 + HIGHLIGHT_W + 5;
+        let widths = [WHEN_W, PROJECT_W, 0, 6, 7, 8, 7];
+        // Fixed columns + highlight symbol + one-column gaps between seven columns.
+        let fixed: u16 = widths.iter().sum::<u16>() + HIGHLIGHT_W + 6;
         let title_w = usize::from(area.width.saturating_sub(fixed));
+        let count = |n: i64| if n > 0 { n.to_string() } else { String::new() };
         let rows = self.order.iter().map(|&i| {
             let s = &self.sessions[i];
-            let comp = if s.compactions > 0 {
-                format!("⧉{}", s.compactions)
-            } else {
-                String::new()
-            };
-            let agents = if s.subagents > 0 {
-                format!(" +{} agents", s.subagents)
-            } else {
-                String::new()
-            };
-            let title = truncate(&format!("{}{agents}", s.title), title_w);
             Row::new(vec![
                 Cell::from(when(s.ended.or(s.started), now)),
-                Cell::from(truncate(&s.project, 22)).style(Style::new().fg(Color::Blue)),
-                Cell::from(title),
+                Cell::from(truncate(&s.project, usize::from(PROJECT_W)))
+                    .style(Style::new().fg(Color::LightBlue)),
+                Cell::from(truncate(&s.title, title_w)),
                 Cell::from(s.messages.to_string()),
-                Cell::from(comp).style(Style::new().fg(Color::Yellow)),
+                Cell::from(count(s.subagents)),
+                Cell::from(count(s.compactions)).style(Style::new().fg(Color::Yellow)),
                 Cell::from(size(s.size)).style(Style::new().add_modifier(Modifier::DIM)),
             ])
         });
-        let widths = [
-            Constraint::Length(13),
-            Constraint::Length(22),
-            Constraint::Min(10),
-            Constraint::Length(6),
-            Constraint::Length(4),
-            Constraint::Length(7),
-        ];
-        let table = Table::new(rows, widths)
+        let constraints = widths.map(|w| {
+            if w == 0 {
+                Constraint::Min(10)
+            } else {
+                Constraint::Length(w)
+            }
+        });
+        let table = Table::new(rows, constraints)
             .header(
-                Row::new(["WHEN", "PROJECT", "TITLE", "MSGS", "⧉", "SIZE"])
-                    .style(Style::new().add_modifier(Modifier::BOLD | Modifier::DIM)),
+                Row::new([
+                    "WHEN", "PROJECT", "TITLE", "MSGS", "AGENTS", "COMPACT", "SIZE",
+                ])
+                .style(Style::new().add_modifier(Modifier::BOLD | Modifier::DIM)),
             )
             .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED))
             .highlight_symbol("▶ ");

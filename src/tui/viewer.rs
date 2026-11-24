@@ -120,6 +120,7 @@ impl Viewer {
             expanded: &self.expanded,
             all_tools: self.all_tools,
             show_thinking: self.show_thinking,
+            now: chrono::Local::now(),
         };
         self.lines = render(&self.transcript, &opts);
         self.haystack = self.lines.iter().map(|l| l.text().to_lowercase()).collect();
@@ -426,20 +427,20 @@ impl Viewer {
 
         let m = &self.transcript.meta;
         let compactions = if m.compactions > 0 {
-            format!(" · ⧉{}", m.compactions)
+            format!(" · {}", plural(m.compactions, "compaction"))
         } else {
             String::new()
         };
         let agents = if self.subagents.is_empty() {
             String::new()
         } else {
-            format!(" · {} subagents", self.subagents.len())
+            format!(" · {}", plural(self.subagents.len(), "subagent"))
         };
         header(
             f,
             head,
             &format!("{} · {}", self.project, self.title),
-            &format!("{} msgs{compactions}{agents}", m.messages),
+            &format!("{}{compactions}{agents}", plural(m.messages, "msg")),
         );
 
         self.draw_text(f, text_area);
@@ -516,7 +517,7 @@ impl Viewer {
                 let at = s.matches.iter().position(|&m| m == self.cursor).map_or("-".into(), |i| (i + 1).to_string());
                 format!("/{}  match {at}/{} · n next · N prev · Esc close", s.query, s.matches.len())
             }
-            None => "j/k scroll  ]/[ prompt  }/{ ⧉  Enter fold  t tools  T thinking  / search  e pager  s agents  y resume  q back".into(),
+            None => "j/k scroll  ]/[ prompt  }/{ compaction  Enter fold  t tools  T thinking  / search  e pager  s agents  y resume  q back".into(),
         };
         footer(f, area, &keys, &pos);
     }
@@ -553,6 +554,15 @@ impl Viewer {
 
 fn signed(n: usize) -> isize {
     isize::try_from(n).unwrap_or(isize::MAX)
+}
+
+/// "1 compaction", "3 compactions".
+fn plural(n: usize, noun: &str) -> String {
+    if n == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{n} {noun}s")
+    }
 }
 
 #[cfg(test)]
