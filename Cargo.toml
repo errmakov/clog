@@ -2,6 +2,18 @@
 name = "clog"
 version = "0.1.0"
 edition = "2024"
+# let-chains in edition 2024
+rust-version = "1.88"
+description = "Terminal UI to browse and search local Claude Code session transcripts, including compacted history"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/errmakov/clog"
+homepage = "https://github.com/errmakov/clog"
+readme = "README.md"
+keywords = ["claude", "claude-code", "tui", "transcripts", "search"]
+categories = ["command-line-utilities"]
+# The crates.io name `clog` belongs to another project; distributed via
+# GitHub Releases instead. Rename the package before publishing to crates.io.
+publish = false
 
 [dependencies]
 anyhow = "1.0.105"
@@ -18,3 +30,12 @@ serde_json = "1.0.154"
 tempfile = "3.27.0"
 textwrap = "0.16.4"
 unicode-width = "0.2.3"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[package.metadata.dist]
+# Distribute via GitHub Releases even though crates.io publishing is off.
+dist = true

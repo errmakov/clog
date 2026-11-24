@@ -1,8 +1,44 @@
 # clog
 
+[![CI](https://github.com/errmakov/clog/actions/workflows/ci.yml/badge.svg)](https://github.com/errmakov/clog/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+
 A terminal UI for browsing and searching your local Claude Code session
 transcripts — including the part of a session that was compacted away and is
 no longer visible in the terminal.
+
+> clog is an independent community tool. It is not affiliated with or
+> endorsed by Anthropic. It only reads files Claude Code already stores on
+> your machine and sends nothing anywhere.
+
+## Install
+
+**macOS / Linux**
+
+```
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/errmakov/clog/releases/latest/download/clog-installer.sh | sh
+```
+
+**Windows (PowerShell)**
+
+```
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/errmakov/clog/releases/latest/download/clog-installer.ps1 | iex"
+```
+
+**Prebuilt archives** for Linux (x86_64, arm64), macOS (Apple Silicon, Intel)
+and Windows (x86_64) are on the
+[Releases page](https://github.com/errmakov/clog/releases), with SHA-256
+checksums. The binaries are not code-signed: on macOS, a binary downloaded
+through a browser needs `xattr -d com.apple.quarantine ./clog` (the install
+script avoids this); on Windows, SmartScreen may ask for confirmation.
+
+**From source** (Rust 1.88+):
+
+```
+cargo install --git https://github.com/errmakov/clog --locked
+```
+
+## Usage
 
 ```
 clog                     open the session list
@@ -59,13 +95,6 @@ Full-text terms are ANDed and prefix-matched; `"quoted words"` match as a phrase
 | `y` | copy the resume command |
 | `q`, `Esc` | back |
 
-## Build
-
-```
-cargo build --release
-cp target/release/clog ~/.local/bin/
-```
-
 Copying uses OSC 52, which most modern terminals (and tmux with
 `set -g set-clipboard on`) support.
 
@@ -82,3 +111,24 @@ Linux, macOS and Windows (64-bit) are built and tested in CI.
 On Windows, copying needs a terminal with OSC 52 support (Windows Terminal);
 the index file relies on your profile folder's default permissions rather
 than Unix 0600.
+
+## Development
+
+```
+cargo test
+cargo clippy --all-targets -- -D warnings
+cargo build --release
+```
+
+Releases: bump `version` in `Cargo.toml`, commit, then push a tag
+`vX.Y.Z`; the Release workflow builds the archives and installers and
+publishes the GitHub Release.
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
+[MIT license](LICENSE-MIT) at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in this work, as defined in the Apache-2.0 license,
+shall be dual licensed as above, without any additional terms or conditions.
