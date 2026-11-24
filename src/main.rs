@@ -10,13 +10,29 @@ use clog::index::Index;
 use clog::parse::{ParseOptions, parse_file};
 use clog::paths::{default_db_path, default_projects_dir, discover};
 
+const AFTER_HELP: &str = "\
+Where sessions are read from:
+  clog reads ONE directory and does not scan other locations or drives.
+  The first that is set wins:
+    1. --projects-dir <DIR>
+    2. $CLOG_PROJECTS_DIR
+    3. $CLAUDE_CONFIG_DIR/projects
+    4. ~/.claude/projects
+  Inside it: <project>/<session>.jsonl and <project>/<session>/subagents/*.jsonl.
+  Transcripts are only read, never modified. The only file clog writes is
+  its index (--db, default ~/.cache/clog/index.db, private 0600).
+
+  To browse another copy (e.g. a backup), use a separate index so your main
+  one is not pruned of sessions missing from that directory:
+    clog --projects-dir /mnt/backup/.claude/projects --db /tmp/backup.db";
+
 /// Browse and search local Claude Code session transcripts.
 #[derive(Parser, Debug)]
-#[command(version, about)]
+#[command(version, about, after_help = AFTER_HELP)]
 struct Cli {
     /// Pre-fill the session filter.
     query: Option<String>,
-    /// Session transcripts directory [default: ~/.claude/projects, env CLOG_PROJECTS_DIR].
+    /// Session transcripts directory (see "Where sessions are read from" below).
     #[arg(long, global = true)]
     projects_dir: Option<PathBuf>,
     /// Index database path [default: ~/.cache/clog/index.db, env CLOG_DB].
