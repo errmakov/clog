@@ -68,3 +68,17 @@ cp target/release/clog ~/.local/bin/
 
 Copying uses OSC 52, which most modern terminals (and tmux with
 `set -g set-clipboard on`) support.
+
+## Platforms
+
+Linux, macOS and Windows (64-bit) are built and tested in CI.
+
+| | Sessions | Index | `y` copies | Default pager |
+| --- | --- | --- | --- | --- |
+| Linux | `~/.claude/projects` | `~/.cache/clog/index.db` | bash/zsh command | `less` |
+| macOS | `~/.claude/projects` | `~/Library/Caches/clog/index.db` | bash/zsh command | `less` |
+| Windows | `%USERPROFILE%\.claude\projects` | `%LOCALAPPDATA%\clog\index.db` | PowerShell command | `more` |
+
+On Windows, copying needs a terminal with OSC 52 support (Windows Terminal);
+the index file relies on your profile folder's default permissions rather
+than Unix 0600.

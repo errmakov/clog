@@ -181,7 +181,7 @@ fn copy_resume_and_subagent_picker() {
     screen(&mut v, &mut t);
     assert_eq!(
         v.on_key(key(KeyCode::Char('y'))),
-        Action::Copy("cd -- /home/alice/www/demo && claude --resume s-1".into())
+        Action::Copy(resume_command(Some("/home/alice/www/demo"), "s-1"))
     );
     assert_eq!(v.on_key(key(KeyCode::Char('s'))), Action::None);
     let s = screen(&mut v, &mut t);

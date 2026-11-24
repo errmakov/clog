@@ -170,12 +170,11 @@ impl App {
             .tempfile()?;
         file.write_all(md.as_bytes())?;
         file.flush()?;
-        let pager = std::env::var("PAGER")
-            .ok()
-            .filter(|p| !p.trim().is_empty())
-            .unwrap_or_else(|| "less".into());
+        let pager = fmt::pager_command(std::env::var("PAGER").ok().as_deref());
         let mut parts = pager.split_whitespace();
-        let program = parts.next().unwrap_or("less");
+        let Some(program) = parts.next() else {
+            return Ok(());
+        };
         ratatui::restore();
         let status = Command::new(program).args(parts).arg(file.path()).status();
         *terminal = ratatui::init();

@@ -123,7 +123,7 @@ fn letters_are_commands_outside_the_input() {
     assert!(screen(&mut l).contains("project: www/demo"));
     assert_eq!(
         l.on_key(key(KeyCode::Char('y'))),
-        Action::Copy("cd -- /home/a/www/demo && claude --resume sid-1".into())
+        Action::Copy(resume_command(Some("/home/a/www/demo"), "sid-1"))
     );
     assert_eq!(l.on_key(key(KeyCode::Char('q'))), Action::Quit);
 }

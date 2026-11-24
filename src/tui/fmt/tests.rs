@@ -56,19 +56,61 @@ fn quotes_shell_arguments() {
     assert_eq!(shell_quote("/home/a/www"), "/home/a/www");
     assert_eq!(shell_quote("it's here"), "'it'\\''s here'");
     assert_eq!(
-        resume_command(Some("/a b"), "s-1"),
+        resume_command_for(Shell::Posix, Some("/a b"), "s-1"),
         "cd -- '/a b' && claude --resume s-1"
     );
-    assert_eq!(resume_command(None, "s-1"), "claude --resume s-1");
+    assert_eq!(
+        resume_command_for(Shell::Posix, None, "s-1"),
+        "claude --resume s-1"
+    );
     assert_eq!(shell_quote("~/x"), "'~/x'", "no tilde expansion");
+}
+
+#[test]
+fn powershell_resume_command_quotes_literally() {
+    assert_eq!(
+        resume_command_for(Shell::PowerShell, Some(r"C:\Users\a\it's $here"), "s-1"),
+        r"Set-Location -LiteralPath 'C:\Users\a\it''s $here'; claude --resume 's-1'"
+    );
+    assert_eq!(
+        resume_command_for(Shell::PowerShell, None, "s-1"),
+        "claude --resume 's-1'"
+    );
+    assert_eq!(powershell_quote("a\u{2019}b"), "'a\u{2019}\u{2019}b'");
+}
+
+#[test]
+fn native_shell_matches_platform() {
+    let expected = if cfg!(windows) {
+        Shell::PowerShell
+    } else {
+        Shell::Posix
+    };
+    assert_eq!(Shell::native(), expected);
+    assert_eq!(
+        resume_command(Some("/a"), "s-1"),
+        resume_command_for(expected, Some("/a"), "s-1")
+    );
 }
 
 #[test]
 fn resume_command_strips_controls_and_option_like_ids() {
     assert_eq!(
-        resume_command(Some("/a\n\u{1b}b"), "--evil\r"),
+        resume_command_for(Shell::Posix, Some("/a\n\u{1b}b"), "--evil\r"),
         "cd -- /ab && claude --resume evil"
     );
+    assert_eq!(
+        resume_command_for(Shell::PowerShell, Some("C:\\a\r\nb"), "-x"),
+        "Set-Location -LiteralPath 'C:\\ab'; claude --resume 'x'"
+    );
+}
+
+#[test]
+fn pager_prefers_env_then_platform_default() {
+    assert_eq!(pager_command(Some("bat -p")), "bat -p");
+    let default = if cfg!(windows) { "more" } else { "less" };
+    assert_eq!(pager_command(Some("  ")), default);
+    assert_eq!(pager_command(None), default);
 }
 
 #[test]

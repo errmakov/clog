@@ -116,15 +116,75 @@ pub fn shell_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
-/// Shell command that resumes a session from its working directory.
+/// PowerShell single-quoted string literal. PowerShell also treats the
+/// typographic quotes ‘ ’ ‚ ‛ as single quotes, so those are doubled too.
+pub fn powershell_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('\'');
+    for c in s.chars() {
+        if matches!(c, '\'' | '\u{2018}' | '\u{2019}' | '\u{201a}' | '\u{201b}') {
+            out.push(c);
+        }
+        out.push(c);
+    }
+    out.push('\'');
+    out
+}
+
+/// Which shell the copied resume command is written for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shell {
+    Posix,
+    PowerShell,
+}
+
+impl Shell {
+    /// PowerShell on Windows (the Windows Terminal default), POSIX elsewhere.
+    pub fn native() -> Self {
+        if cfg!(windows) {
+            Shell::PowerShell
+        } else {
+            Shell::Posix
+        }
+    }
+}
+
+/// Command that resumes a session from its working directory, for the
+/// platform's usual shell.
+pub fn resume_command(cwd: Option<&str>, session_id: &str) -> String {
+    resume_command_for(Shell::native(), cwd, session_id)
+}
+
 /// Values come from transcript files, so control characters are removed and
 /// the id cannot be mistaken for an option.
-pub fn resume_command(cwd: Option<&str>, session_id: &str) -> String {
+pub fn resume_command_for(shell: Shell, cwd: Option<&str>, session_id: &str) -> String {
     let id = sanitize_inline(session_id);
-    let id = shell_quote(id.trim_start_matches('-'));
-    match cwd.map(sanitize_inline).filter(|d| !d.is_empty()) {
-        Some(dir) => format!("cd -- {} && claude --resume {id}", shell_quote(&dir)),
-        None => format!("claude --resume {id}"),
+    let id = id.trim_start_matches('-');
+    let dir = cwd.map(sanitize_inline).filter(|d| !d.is_empty());
+    match (shell, dir) {
+        (Shell::Posix, Some(dir)) => {
+            format!(
+                "cd -- {} && claude --resume {}",
+                shell_quote(&dir),
+                shell_quote(id)
+            )
+        }
+        (Shell::Posix, None) => format!("claude --resume {}", shell_quote(id)),
+        (Shell::PowerShell, Some(dir)) => format!(
+            "Set-Location -LiteralPath {}; claude --resume {}",
+            powershell_quote(&dir),
+            powershell_quote(id)
+        ),
+        (Shell::PowerShell, None) => format!("claude --resume {}", powershell_quote(id)),
+    }
+}
+
+/// `$PAGER` if set, else `more` on Windows (always present) and `less` elsewhere.
+pub fn pager_command(env: Option<&str>) -> String {
+    match env.map(str::trim).filter(|p| !p.is_empty()) {
+        Some(p) => p.to_string(),
+        None if cfg!(windows) => "more".into(),
+        None => "less".into(),
     }
 }
 
