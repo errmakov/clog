@@ -44,11 +44,14 @@ On company-managed Windows, an Application Control (WDAC) policy may refuse
 to run `clog.exe` ("An Application Control policy has blocked this file").
 Building from source doesn't help, because a locally built binary is
 unsigned too. If WSL is available, install the Linux build inside it with
-the macOS / Linux command above. Then point it at your Windows sessions,
-replacing `<you>` with your Windows user name:
+the macOS / Linux command above. If WSL says `curl: command not found`, run
+`sudo apt update && sudo apt install -y curl` first, or swap `curl … -LsSf`
+for `wget -qO-`. Then point it at your Windows sessions, replacing `<you>`
+with your Windows user name:
 
 ```
 echo 'export CLOG_PROJECTS_DIR=/mnt/c/Users/<you>/.claude/projects' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 If you run Claude Code inside WSL itself, skip this; plain `clog` finds
