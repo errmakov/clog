@@ -38,6 +38,25 @@ script avoids this); on Windows, SmartScreen may ask for confirmation.
 cargo install --git https://github.com/errmakov/clog --locked
 ```
 
+**Managed Windows (WSL)**
+
+On company-managed Windows, an Application Control (WDAC) policy may refuse
+to run `clog.exe` ("An Application Control policy has blocked this file").
+Building from source doesn't help, because a locally built binary is
+unsigned too. If WSL is available, install the Linux build inside it with
+the macOS / Linux command above. Then point it at your Windows sessions,
+replacing `<you>` with your Windows user name:
+
+```
+echo 'export CLOG_PROJECTS_DIR=/mnt/c/Users/<you>/.claude/projects' >> ~/.bashrc
+```
+
+If you run Claude Code inside WSL itself, skip this; plain `clog` finds
+`~/.claude/projects`. Reading Windows files from WSL is slower, so the first
+indexing run takes longer. The resume command that `y` copies is in bash
+syntax but holds the session's Windows path (`C:\…`), so adjust it before
+running it.
+
 ## Usage
 
 ```
